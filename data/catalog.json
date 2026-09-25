@@ -80,6 +80,84 @@
         "expected_parts": [
           "towel"
         ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-MUG-11",
+        "asin": "B0DUMMY351",
+        "title": "Mug 11",
+        "expected_parts": [
+          "mug x2"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-CANDLE-3",
+        "asin": "B0DUMMY964",
+        "title": "Candle 3",
+        "expected_parts": [
+          "candle x3",
+          "gift box"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-BUDS-TWS",
+        "asin": "B0EVAL0101",
+        "title": "Buds Tws",
+        "expected_parts": [
+          "earbuds",
+          "case",
+          "charging cable"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-NOTEBOOK-A5",
+        "asin": "B0EVAL0102",
+        "title": "Notebook A5",
+        "expected_parts": [
+          "notebook",
+          "pen"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-CASE-CLR",
+        "asin": "B0EVAL0103",
+        "title": "Case Clr",
+        "expected_parts": [
+          "case"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-UMBRELLA-BLK",
+        "asin": "B0EVAL0104",
+        "title": "Umbrella Blk",
+        "expected_parts": [
+          "umbrella"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-ORGANIZER-DSK",
+        "asin": "B0EVAL0105",
+        "title": "Organizer Dsk",
+        "expected_parts": [
+          "organizer",
+          "dividers"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-SCALE-KTC",
+        "asin": "B0EVAL0106",
+        "title": "Scale Ktc",
+        "expected_parts": [
+          "scale",
+          "battery"
+        ]
       }
     ],
     "org_demo_bravo": [
