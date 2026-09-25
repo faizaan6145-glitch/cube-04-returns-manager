@@ -21,16 +21,18 @@ process.
 
 ## Evaluation-set limitations (read first)
 
-* Images are **web images from Wikimedia Commons** (see `eval/IMAGE_SOURCES.csv` for licence and author),
-  not real customer returns. Condition and missing-part cases are only *hinted* by search wording; the true
-  labels come from the two human labellers.
-* Roughly a fifth of the images turned out to be weak or off-topic (Commons has few clean product photos for
-  some items). They were kept and labelled honestly rather than curated away, so they mostly appear as
-  identity `no`/`uncertain` cases -- this inflates those classes relative to a real returns stream.
-* Selection was by category/keyword and a relevance check on contact sheets; the agent was never used to
-  choose images. `BAD-1`/`BAD-2` are synthetic (blurred/darkened) and `WRONGITEM-1..3` reuse existing images
-  under a mismatched order, so they are not independent samples.
-* Results therefore say how the agent handles clean-ish web product photos, **not** how it performs on real
+* Images are **web images from Wikimedia Commons** (`eval/IMAGE_SOURCES.csv` has title, author and licence
+  for each), not real customer returns. Condition and missing-part cases are only *hinted* by search wording;
+  the true labels come from the two human labellers.
+* **Each unit = one photo + a synthetic zoomed crop of the same photo.** A first version paired two unrelated
+  search results per unit (e.g. a mug and coffee beans), which is unlike a real return, so it was replaced.
+  Because the second image is a crop, the two images of a unit are not independent evidence.
+* Seven units whose images did not show the right item were dropped and replaced by extra units from
+  categories with clean photos. The remaining photos were **hand-picked for relevance** from contact sheets
+  (relevance only -- the agent was never used to choose images). This makes the set cleaner than real returns.
+* `BAD-1`/`BAD-2` are synthetic (blurred / darkened) and `WRONGITEM-1..3` reuse existing images under a
+  mismatched order, so they are not independent samples.
+* Results therefore show how the agent handles clean-ish web product photos, **not** how it performs on real
   warehouse capture conditions.
 
 ## Results

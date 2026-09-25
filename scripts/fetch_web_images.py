@@ -27,7 +27,7 @@ import httpx
 from PIL import Image, ImageEnhance, ImageFilter
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from scaffold_eval import BAD_PHOTO_UNITS, FIXTURES_DIR, PRODUCTS, WRONG_ITEM_CASES  # noqa: E402
+from scaffold_eval import BAD_PHOTO_UNITS, DROPPED, EXTRA_UNITS, FIXTURES_DIR, PRODUCTS, WRONG_ITEM_CASES  # noqa: E402
 
 EVAL_DIR = FIXTURES_DIR.parent
 API = "https://commons.wikimedia.org/w/api.php"
@@ -105,6 +105,8 @@ def unit_plan() -> list[tuple[str, str, str]]:
     for code, _sku, _asin, _t, _parts, c_kind in PRODUCTS:
         plan += [(f"{code}-A", code, "A"), (f"{code}-B", code, "B"),
                  (f"{code}-C", code, "C_missing" if c_kind == "missing" else "C_damaged")]
+    plan = [u for u in plan if u[0] not in DROPPED]
+    plan += [(uid, code, "B") for uid, code, _ in EXTRA_UNITS]
     return plan
 
 
@@ -176,14 +178,14 @@ def main() -> None:
                                  "note": "reused under a mismatched order to test wrong-item detection"})
 
         # BAD-*: synthetic degraded copies of downloaded images.
-        donors = ["MUG-B", "CABLE-B", "LEASH-B", "TOWEL-B"]
+        donors = ["MUG-B", "CABLE-B"]  # both images of a BAD unit come from ONE item
         for i, unit_id in enumerate(BAD_PHOTO_UNITS):
             dst = FIXTURES_DIR / unit_id
             dst.mkdir(parents=True, exist_ok=True)
             if (dst / "1.jpg").exists():
                 continue
             for n, f in enumerate(("1.jpg", "2.jpg")):
-                donor = FIXTURES_DIR / donors[i * 2 + n] / "1.jpg"
+                donor = FIXTURES_DIR / donors[i] / f
                 if not donor.exists():
                     continue
                 img = Image.open(donor).convert("RGB")
@@ -192,7 +194,7 @@ def main() -> None:
                 else:  # very dark
                     img = ImageEnhance.Brightness(img).enhance(0.08)
                 img.save(dst / f, "JPEG", quality=85)
-                rows.append({"unit_id": unit_id, "file": f, "source_title": f"(degraded copy of {donors[i * 2 + n]}/1.jpg)",
+                rows.append({"unit_id": unit_id, "file": f, "source_title": f"(degraded copy of {donors[i]}/{f})",
                              "author": "", "licence": "", "page_url": "", "search_query": "",
                              "note": "SYNTHETIC: " + ("blurred" if i == 0 else "darkened")})
 

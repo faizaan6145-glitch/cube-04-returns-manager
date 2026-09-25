@@ -58,6 +58,21 @@ WRONG_ITEM_CASES = [
 
 BAD_PHOTO_UNITS = ["BAD-1", "BAD-2"]
 
+# Units dropped because the available web images did not show the right item
+# (see EVAL_REPORT.md). Replaced by EXTRA_UNITS so the total stays above 50.
+DROPPED = {"BOTTLE-B", "BOTTLE-C", "LAMP-B", "LEASH-A", "PUZZLE-C", "TOWEL-B", "UMBRELLA-B"}
+# (unit_id, product_code, search-hint note): extra variants of products whose Commons
+# categories gave clean, on-topic photos.
+EXTRA_UNITS = [
+    ("NOTEBOOK-D", "NOTEBOOK", "Extra notebook example."),
+    ("MUG-D", "MUG", "Extra mug example."),
+    ("CABLE-D", "CABLE", "Extra cable example."),
+    ("SCALE-D", "SCALE", "Extra kitchen scale example."),
+    ("TUB-D", "TUB", "Extra protein tub example."),
+    ("BUDS-D", "BUDS", "Extra earbuds example."),
+    ("PHONECASE-D", "PHONECASE", "Extra phone case example."),
+]
+
 
 def merge_catalog() -> None:
     data = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
@@ -100,6 +115,14 @@ def unit_rows() -> list[dict]:
                 "ordered_sku": sku, "ordered_asin": asin, "image_files": "1.jpg;2.jpg",
                 "_stage_note": "Visibly damaged (scratched/dented/torn/stained) -- Acceptable or worse.",
             })
+    rows = [r for r in rows if r["unit_id"] not in DROPPED]
+    for unit_id, code, note in EXTRA_UNITS:
+        product = next(p for p in PRODUCTS if p[0] == code)
+        rows.append({
+            "unit_id": unit_id, "org_id": ORG_ID, "order_id": f"ORD-EVAL-{unit_id}",
+            "ordered_sku": product[1], "ordered_asin": product[2], "image_files": "1.jpg;2.jpg",
+            "_stage_note": note,
+        })
     for unit_id, reuse_of, wrong_sku in WRONG_ITEM_CASES:
         product = next(p for p in PRODUCTS if reuse_of.startswith(p[0] + "-"))
         wrong_product = next(p for p in PRODUCTS if p[1] == wrong_sku)
