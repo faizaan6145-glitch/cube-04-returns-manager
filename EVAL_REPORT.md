@@ -19,6 +19,20 @@ process.
   `tests/test_eval_metrics.py`) — accuracy, false positives/negatives per
   check, `UNCERTAIN` rate, Cohen's kappa for human agreement, and latency.
 
+## Evaluation-set limitations (read first)
+
+* Images are **web images from Wikimedia Commons** (see `eval/IMAGE_SOURCES.csv` for licence and author),
+  not real customer returns. Condition and missing-part cases are only *hinted* by search wording; the true
+  labels come from the two human labellers.
+* Roughly a fifth of the images turned out to be weak or off-topic (Commons has few clean product photos for
+  some items). They were kept and labelled honestly rather than curated away, so they mostly appear as
+  identity `no`/`uncertain` cases -- this inflates those classes relative to a real returns stream.
+* Selection was by category/keyword and a relevance check on contact sheets; the agent was never used to
+  choose images. `BAD-1`/`BAD-2` are synthetic (blurred/darkened) and `WRONGITEM-1..3` reuse existing images
+  under a mismatched order, so they are not independent samples.
+* Results therefore say how the agent handles clean-ish web product photos, **not** how it performs on real
+  warehouse capture conditions.
+
 ## Results
 
 _Paste the output of `eval/run_eval.py` (also saved to `eval/EVAL_SUMMARY.md`)
