@@ -119,7 +119,8 @@ def run_agent_on_manifest() -> list[dict]:
 
 def build_report(results: list[dict], labels_a: list[dict], labels_b: list[dict]) -> str:
     a_by_unit = {r["unit_id"]: r for r in labels_a}
-    b_by_unit = {r["unit_id"]: r for r in labels_b}
+    # a scaffolded-but-unfilled labels_B.csv must not count as "rater B disagreed on everything"
+    b_by_unit = {r["unit_id"]: r for r in labels_b if r.get("identity_match") and r.get("disposition")}
     lines: list[str] = []
 
     def p(line: str = "") -> None:
@@ -200,7 +201,8 @@ def build_report(results: list[dict], labels_a: list[dict], labels_b: list[dict]
             agree = sum(x == y for x, y in zip(a_vals, b_vals)) / len(both)
             p(f"- {field}: {agree:.1%} raw agreement, Cohen's kappa = {k:.2f} (n={len(both)})")
     else:
-        p("- No units labelled by both A and B yet.")
+        p("- **Not measured: only one human rater labelled this set (labels_B.csv is empty).** "
+          "Labels are single-rater, so label noise is unquantified.")
     p()
 
     # --- Latency ---
@@ -219,7 +221,12 @@ def build_report(results: list[dict], labels_a: list[dict], labels_b: list[dict]
 
 
 def main() -> None:
-    results = run_agent_on_manifest()
+    if "--report-only" in sys.argv:  # re-score saved results without calling the model again
+        results = read_csv(EVAL_DIR / "results.csv")
+        for r in results:
+            r["identity_latency_ms"] = int(r["identity_latency_ms"])
+    else:
+        results = run_agent_on_manifest()
     if not results:
         return
     labels_a = read_csv(EVAL_DIR / "labels_A.csv")
