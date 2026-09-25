@@ -7,9 +7,9 @@ services:
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: GEMINI_MODEL
-        value: gemini-2.5-flash
+        value: gemini-flash-lite-latest
       - key: GEMINI_TIMEOUT_S
-        value: "60"
+        value: "90"
       - key: MIN_CONFIDENCE
         value: "0.6"
       - key: DB_PATH

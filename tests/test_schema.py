@@ -34,7 +34,7 @@ def _run(monkeypatch, tmp_env, outcome: GeminiOutcome):
 
 def test_successful_record_has_all_contract_fields(monkeypatch, tmp_env):
     outcome = GeminiOutcome(
-        ok=True, latency_ms=500, model_version="gemini-2.5-flash",
+        ok=True, latency_ms=500, model_version="gemini-flash-lite-latest",
         raw={
             "identity": {"verdict": "PASS", "confidence": 0.95, "detail": "matches"},
             "completeness": {"verdict": "PASS", "confidence": 0.9, "detail": "all there",

@@ -44,7 +44,7 @@ def load_settings() -> Settings:
     return Settings(
         org_keys=parse_org_keys(raw_keys),
         gemini_api_key=os.getenv("GEMINI_API_KEY") or None,
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
         gemini_timeout_s=float(os.getenv("GEMINI_TIMEOUT_S", "60")),
         min_confidence=float(os.getenv("MIN_CONFIDENCE", "0.6")),
         db_path=_path("DB_PATH", "storage/returns.db"),

@@ -13,7 +13,7 @@ def tmp_env(tmp_path, monkeypatch):
     """Isolated settings for each test: its own DB, image dir, and dummy org keys."""
     monkeypatch.setenv("ORG_KEYS", "org_demo_alpha:alpha-key,org_demo_bravo:bravo-key")
     monkeypatch.setenv("GEMINI_API_KEY", "dummy-not-used-because-mocked")
-    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.5-flash")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-flash-lite-latest")
     monkeypatch.setenv("GEMINI_TIMEOUT_S", "5")
     monkeypatch.setenv("MIN_CONFIDENCE", "0.6")
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))

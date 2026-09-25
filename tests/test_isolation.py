@@ -5,7 +5,7 @@ from unittest.mock import patch
 from app.gemini_client import GeminiOutcome
 
 FAKE_OUTCOME = GeminiOutcome(
-    ok=True, latency_ms=100, model_version="gemini-2.5-flash",
+    ok=True, latency_ms=100, model_version="gemini-flash-lite-latest",
     raw={
         "identity": {"verdict": "PASS", "confidence": 0.9, "detail": "matches"},
         "completeness": {"verdict": "PASS", "confidence": 0.9, "detail": "complete",

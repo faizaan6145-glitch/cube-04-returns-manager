@@ -33,7 +33,7 @@ def test_malformed_model_reply_falls_back_to_uncertain(monkeypatch, tmp_env):
     # ok=True but missing fields -- pipeline must not crash on a shaky reply.
     monkeypatch.setattr(
         "app.pipeline.run_checks",
-        lambda **kw: GeminiOutcome(ok=True, latency_ms=200, model_version="gemini-2.5-flash", raw={}),
+        lambda **kw: GeminiOutcome(ok=True, latency_ms=200, model_version="gemini-flash-lite-latest", raw={}),
     )
     settings = load_settings()
     catalog = load_catalog(settings.catalog_path)

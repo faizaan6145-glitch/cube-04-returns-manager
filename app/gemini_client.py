@@ -16,7 +16,13 @@ import time
 from dataclasses import dataclass, field
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
+
+# HTTP statuses worth a short retry: 429 = rate limited, 503 = temporarily
+# overloaded. Both are common on the Gemini free tier and are not the same
+# kind of failure as a real error -- a brief wait usually clears them.
+_RETRYABLE_STATUS = {429, 503}
+_RETRY_DELAYS_S = (2, 5, 10)
 
 from app.catalog import CatalogItem
 from app.condition_scale import GRADE_KEYS, prompt_text
@@ -121,19 +127,30 @@ def _call(
     for b in image_bytes:
         parts.append(types.Part.from_bytes(data=b, mime_type="image/jpeg"))
 
-    response = client.models.generate_content(
-        model=model,
-        contents=[types.Content(role="user", parts=parts)],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=RESPONSE_SCHEMA,
-            temperature=0.1,
-        ),
-    )
-    text = response.text
-    if not text:
-        raise ValueError("Empty response from model")
-    return json.loads(text)
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate((0, *_RETRY_DELAYS_S)):
+        if delay:
+            time.sleep(delay)
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=[types.Content(role="user", parts=parts)],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=RESPONSE_SCHEMA,
+                    temperature=0.1,
+                ),
+            )
+            text = response.text
+            if not text:
+                raise ValueError("Empty response from model")
+            return json.loads(text)
+        except errors.APIError as exc:
+            last_exc = exc
+            if getattr(exc, "code", None) not in _RETRYABLE_STATUS:
+                raise
+            # retryable (rate limited / temporarily overloaded) -- loop again
+    raise last_exc  # exhausted retries
 
 
 def run_checks(
