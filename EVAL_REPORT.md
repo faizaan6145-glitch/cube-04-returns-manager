@@ -24,9 +24,9 @@ process.
 * Images are **web images from Wikimedia Commons** (`eval/IMAGE_SOURCES.csv` has title, author and licence
   for each), not real customer returns. Condition and missing-part cases are only *hinted* by search wording;
   the true labels come from the two human labellers.
-* **Each unit = one photo + a synthetic zoomed crop of the same photo.** A first version paired two unrelated
-  search results per unit (e.g. a mug and coffee beans), which is unlike a real return, so it was replaced.
-  Because the second image is a crop, the two images of a unit are not independent evidence.
+* **Each unit is a single photo.** Earlier versions gave two images per unit (first two unrelated search
+  results, then a photo plus a synthetic crop); both were dropped because they were confusing or redundant.
+  Real returns usually have several photos, so multi-image handling is not exercised by this set.
 * Seven units whose images did not show the right item were dropped and replaced by extra units from
   categories with clean photos. The remaining photos were **hand-picked for relevance** from contact sheets
   (relevance only -- the agent was never used to choose images). This makes the set cleaner than real returns.

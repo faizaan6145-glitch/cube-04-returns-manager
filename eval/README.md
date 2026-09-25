@@ -41,9 +41,9 @@ the keys in `app/condition_scale.py`), `disposition`
 python -m uvicorn eval.labeler:app --port 8001
 ```
 
-Open <http://127.0.0.1:8001>, pick rater A or B, and label each unit from its two images. It saves
+Open <http://127.0.0.1:8001>, pick rater A or B, and label each unit from its image. It saves
 straight into `labels_A.csv` / `labels_B.csv`, remembers your progress, and shows only what an operator
-would know (images, ordered item, expected parts) -- never the search hints, image sources, the other
+would know (the image, ordered item, expected parts) -- never the search hints, image sources, the other
 rater's labels or the agent's output. Rater B should use the page on their own, without seeing A's answers.
 
 ## 3. Run the agent and score it

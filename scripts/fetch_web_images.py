@@ -1,4 +1,4 @@
-"""Fills eval/fixtures/<unit_id>/1.jpg and 2.jpg with freely licensed images
+"""Fills eval/fixtures/<unit_id>/1.jpg with freely licensed images
 from Wikimedia Commons (no API key needed) and records where each one came
 from in eval/IMAGE_SOURCES.csv (title, author, licence, URL) so the evaluation
 set is properly attributed.
@@ -135,14 +135,14 @@ def main() -> None:
         for unit_id, code, kind in unit_plan():
             folder = FIXTURES_DIR / unit_id
             folder.mkdir(parents=True, exist_ok=True)
-            if (folder / "1.jpg").exists() and (folder / "2.jpg").exists():
+            if (folder / "1.jpg").exists():
                 continue
             print(f"{unit_id}: searching...")
             got = 0
             queries = [f'deepcategory:"{c}" {w}'.strip() for w in (KIND_WORDS[kind] + [""] if "--plain" not in sys.argv else [""]) for c in CATEGORIES.get(code, [])]
             queries += [f"{w} {NOUN[code]}".strip() for w in KIND_WORDS[kind] + [""]]
             for query in queries:
-                if got >= 2:
+                if got >= 1:
                     break
                 try:
                     candidates = search(client, query)
@@ -151,7 +151,7 @@ def main() -> None:
                     continue
                 time.sleep(1)
                 for c in candidates:
-                    if got >= 2:
+                    if got >= 1:
                         break
                     if c["title"] in used_titles:
                         continue
@@ -163,15 +163,15 @@ def main() -> None:
                                      "search_query": query, "note": ""})
                         print(f"    {got}.jpg <- {c['title']} ({c['licence']})")
                         time.sleep(0.5)
-            if got < 2:
-                print(f"    !! only found {got}/2 images for {unit_id}")
+            if got < 1:
+                print(f"    !! only found {got}/1 images for {unit_id}")
 
         # WRONGITEM-*: copy another unit's images.
         for unit_id, reuse_of, _sku in WRONG_ITEM_CASES:
             src, dst = FIXTURES_DIR / reuse_of, FIXTURES_DIR / unit_id
             dst.mkdir(parents=True, exist_ok=True)
-            if all((src / f).exists() for f in ("1.jpg", "2.jpg")) and not (dst / "1.jpg").exists():
-                for f in ("1.jpg", "2.jpg"):
+            if (src / "1.jpg").exists() and not (dst / "1.jpg").exists():
+                for f in ("1.jpg",):
                     shutil.copy(src / f, dst / f)
                     rows.append({"unit_id": unit_id, "file": f, "source_title": f"(copy of {reuse_of}/{f})",
                                  "author": "", "licence": "", "page_url": "", "search_query": "",
@@ -184,7 +184,7 @@ def main() -> None:
             dst.mkdir(parents=True, exist_ok=True)
             if (dst / "1.jpg").exists():
                 continue
-            for n, f in enumerate(("1.jpg", "2.jpg")):
+            for n, f in enumerate(("1.jpg",)):
                 donor = FIXTURES_DIR / donors[i] / f
                 if not donor.exists():
                     continue
@@ -208,8 +208,8 @@ def _save(sources_path: Path, rows: list[dict]) -> None:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
         w.writerows(rows)
-    complete = sum(1 for d in FIXTURES_DIR.iterdir() if (d / "1.jpg").exists() and (d / "2.jpg").exists())
-    print(f"\n{complete}/{len(list(FIXTURES_DIR.iterdir()))} unit folders have both images. Sources: {sources_path}")
+    complete = sum(1 for d in FIXTURES_DIR.iterdir() if (d / "1.jpg").exists())
+    print(f"\n{complete}/{len(list(FIXTURES_DIR.iterdir()))} unit folders have their image. Sources: {sources_path}")
 
 
 if __name__ == "__main__":

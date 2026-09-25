@@ -5,7 +5,7 @@ Open: http://127.0.0.1:8001
 
 Two people label independently: rater A writes eval/labels_A.csv, rater B writes
 eval/labels_B.csv. The page deliberately shows only what a real operator would
-know -- the two images, the ordered item and its expected parts list. It does NOT
+know -- the image(s), the ordered item and its expected parts list. It does NOT
 show the search hints, image sources, the other rater's labels or the agent's
 output, since any of those would bias the labels (RULES.md: independent labels).
 
@@ -75,7 +75,7 @@ UNIT = """{% extends "page" %}{% block body %}
 <p><a href="/r/{{ rater }}">&larr; all units</a> &middot; Rater <b>{{ rater }}</b> &middot; unit {{ idx + 1 }}/{{ total }} &middot; {{ done }} labelled</p>
 <div class="bar"><i style="width:{{ pct }}%"></i></div>
 <h2>{{ unit_id }}{% if saved %} <span class="small">&#10003; saved</span>{% endif %}</h2>
-<div class="imgs">{% for n in (1, 2) %}<a href="/img/{{ unit_id }}/{{ n }}" target="_blank"><img src="/img/{{ unit_id }}/{{ n }}" alt="image {{ n }}"></a>{% endfor %}</div>
+<div class="imgs" style="grid-template-columns:{{ '1fr' if n_images == 1 else '1fr 1fr' }}">{% for n in range(1, n_images + 1) %}<a href="/img/{{ unit_id }}/{{ n }}" target="_blank"><img src="/img/{{ unit_id }}/{{ n }}" alt="image {{ n }}"></a>{% endfor %}</div>
 <div class="card"><b>Ordered:</b> {{ item.title }} <span class="small">({{ item.sku }})</span><br>
 <b>Expected parts:</b> {{ item.parts | join(", ") }}</div>
 <form method="post" class="card">
@@ -168,7 +168,8 @@ def create_app(eval_dir: Path = ROOT / "eval", catalog_path: Path = ROOT / "data
                    "disposition": lab.get("disposition", ""), "notes": lab.get("notes", ""),
                    "missing": [p for p in (lab.get("parts_missing") or "").split(";") if p]}
         done = sum(is_done(labels.get(i)) for i in ids)
-        return render("unit", rater=rater, unit_id=unit_id, idx=idx, total=len(ids), done=done,
+        n_images = max(1, len([f for f in row["image_files"].split(";") if f]))
+        return render("unit", n_images=n_images, rater=rater, unit_id=unit_id, idx=idx, total=len(ids), done=done,
                       pct=round(100 * done / len(ids)), item=item, lab=lab_ctx, saved=bool(saved),
                       identity=IDENTITY, dispositions=DISPOSITIONS, help=DISPOSITION_HELP,
                       grades=list(GRADES.items()),
@@ -200,7 +201,7 @@ def create_app(eval_dir: Path = ROOT / "eval", catalog_path: Path = ROOT / "data
 
     @app.get("/img/{unit_id}/{n}")
     def image(unit_id: str, n: int):
-        if unit_id not in {r["unit_id"] for r in manifest()} or n not in (1, 2):
+        if unit_id not in {r["unit_id"] for r in manifest()} or not 1 <= n <= 9:
             raise HTTPException(404, "Not found.")
         path = fixtures / unit_id / f"{n}.jpg"
         if not path.exists():
