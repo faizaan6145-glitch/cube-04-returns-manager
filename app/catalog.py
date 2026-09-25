@@ -32,6 +32,14 @@ class Catalog:
     def lookup(self, org_id: str, sku: str) -> CatalogItem | None:
         return self._by_org_sku.get((org_id, sku))
 
+    def all_items(self) -> list[CatalogItem]:
+        """One entry per SKU across all orgs -- only used to fill the upload form's product picker.
+        Lookups during a return still go through lookup(org_id, sku), so tenancy is unaffected."""
+        seen: dict[str, CatalogItem] = {}
+        for item in self._by_org_sku.values():
+            seen.setdefault(item.sku, item)
+        return sorted(seen.values(), key=lambda i: i.title)
+
     def list_for_org(self, org_id: str) -> list[CatalogItem]:
         return [v for (org, _), v in self._by_org_sku.items() if org == org_id]
 

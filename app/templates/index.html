@@ -1,36 +1,108 @@
 {% extends "base.html" %}
-{% block title %}Returns Manager — Submit a return{% endblock %}
+{% block title %}New return · Returns Manager{% endblock %}
+{% block nav_new %}active{% endblock %}
 {% block content %}
-<h1>Returns Manager</h1>
-<p>Submit photos of a returned item. The agent checks identity, completeness and
-condition, then decides a disposition.</p>
+<h1>Check a returned item</h1>
+<p class="sub">Add photos and the order details. The agent checks identity, completeness and condition, then recommends what to do with it.</p>
 
-<form action="/agent" method="post" enctype="multipart/form-data">
-  <label>Your API key
-    <input type="text" name="api_key" list="org-hint" placeholder="Paste the api_key for your org from .env" required>
-    <datalist id="org-hint">{% for org in orgs %}<option value="{{ org }}">{% endfor %}</datalist>
-    <small class="hint">This is the key from ORG_KEYS in your .env (format org_id:api_key) —
-      known orgs: {{ orgs | join(", ") }}.</small>
-  </label>
+<div class="grid-2">
+  <form id="form" class="card" action="/agent" method="post" enctype="multipart/form-data" autocomplete="off">
+    <h2>1 &middot; Order details</h2>
+    <div class="row">
+      <div class="field"><label class="f" for="api_key">API key</label>
+        <input id="api_key" name="api_key" type="password" required placeholder="Your organisation's key">
+        <div class="hint">From <code>ORG_KEYS</code> in your <code>.env</code>. Remembered in this browser.</div></div>
+      <div class="field"><label class="f" for="operator_label">Your name</label>
+        <input id="operator_label" name="operator_label" type="text" required placeholder="e.g. faizaan"></div>
+    </div>
+    <div class="field"><label class="f" for="sku">Ordered product</label>
+      <select id="sku" name="ordered_sku" required>
+        <option value="" disabled selected>Choose the product that was ordered&hellip;</option>
+        {% for item in catalog %}<option value="{{ item.sku }}">{{ item.title }} &mdash; {{ item.sku }}</option>{% endfor %}
+      </select></div>
+    <div class="row">
+      <div class="field"><label class="f" for="asin">ASIN</label><input id="asin" name="ordered_asin" type="text" required readonly placeholder="filled in automatically"></div>
+      <div class="field"><label class="f" for="unit_id">Unit ID</label><input id="unit_id" name="unit_id" type="text" required></div>
+    </div>
+    <div class="field"><label class="f" for="order_id">Order ID</label><input id="order_id" name="order_id" type="text" required></div>
 
-  <label>Your name / operator label
-    <input type="text" name="operator_label" placeholder="op_you" required>
-  </label>
-  <label>Unit ID
-    <input type="text" name="unit_id" placeholder="UNIT-0003" required>
-  </label>
-  <label>Order ID
-    <input type="text" name="order_id" placeholder="ORD-DUMMY-50003" required>
-  </label>
-  <label>Ordered SKU
-    <input type="text" name="ordered_sku" placeholder="SKU-PUZZLE-500" required>
-  </label>
-  <label>Ordered ASIN
-    <input type="text" name="ordered_asin" placeholder="B0DUMMY729" required>
-  </label>
-  <label>Photos (2-3 recommended)
-    <input type="file" name="images" accept="image/*" multiple required>
-  </label>
-  <button type="submit">Run Returns Manager</button>
-</form>
+    <h2 style="margin-top:1.4rem">2 &middot; Photos</h2>
+    <div id="drop" class="dropzone" tabindex="0" role="button" aria-label="Add photos">
+      <strong>Drop photos here</strong> or click to browse<br><span class="small">JPG or PNG &middot; 1&ndash;4 photos work best (whole item, close-up of damage, packaging)</span>
+    </div>
+    <input id="files" name="images" type="file" accept="image/*" multiple hidden>
+    <div id="previews" class="previews"></div>
+
+    <button id="submit" class="btn block" type="submit" style="margin-top:1.3rem"><span class="spinner"></span><span id="btn-label">Run Returns Manager</span></button>
+    <div id="err" class="small" style="color:var(--bad);margin-top:.6rem"></div>
+  </form>
+
+  <aside class="stack">
+    <div class="card" id="parts-card">
+      <h2>Expected parts</h2>
+      <div id="parts" class="chips"><span class="small">Pick a product to see what should be in the box.</span></div>
+    </div>
+    <div class="card">
+      <h2>How it decides</h2>
+      <ol class="steps">
+        <li><b>Identity</b> &mdash; is this the item that was ordered?</li>
+        <li><b>Completeness</b> &mdash; are all expected parts present?</li>
+        <li><b>Condition</b> &mdash; graded on Amazon's published used-item scale.</li>
+        <li><b>Disposition</b> &mdash; restock, refurbish, liquidate, dispose &mdash; or send to a human when the evidence isn't clear enough.</li>
+      </ol>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  var CATALOG = {{ catalog | tojson }};
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $('form'), drop = $('drop'), files = $('files'), previews = $('previews'), chosen = [];
+
+  // remembered key / operator, generated IDs
+  try {
+    $('api_key').value = localStorage.getItem('rm_api_key') || '';
+    $('operator_label').value = localStorage.getItem('rm_operator') || '';
+  } catch (e) {}
+  var stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(2, 12);
+  $('unit_id').value = 'UNIT-' + stamp; $('order_id').value = 'ORD-' + stamp;
+
+  // product picker -> ASIN + expected parts
+  $('sku').addEventListener('change', function () {
+    var item = CATALOG.find(function (i) { return i.sku === $('sku').value; });
+    if (!item) return;
+    $('asin').value = item.asin;
+    $('parts').innerHTML = item.parts.map(function (p) {
+      var s = document.createElement('span'); s.className = 'chip'; s.textContent = p; return s.outerHTML; }).join('');
+  });
+
+  // photos: drag & drop + previews
+  function sync() {
+    var dt = new DataTransfer(); chosen.forEach(function (f) { dt.items.add(f); }); files.files = dt.files;
+    previews.innerHTML = '';
+    chosen.forEach(function (f, i) {
+      var fig = document.createElement('figure'), img = document.createElement('img'), x = document.createElement('button');
+      img.src = URL.createObjectURL(f); x.type = 'button'; x.textContent = '×'; x.title = 'Remove';
+      x.onclick = function () { chosen.splice(i, 1); sync(); };
+      fig.appendChild(img); fig.appendChild(x); previews.appendChild(fig);
+    });
+  }
+  function add(list) {
+    Array.prototype.forEach.call(list, function (f) { if (/^image\//.test(f.type) && chosen.length < 8) chosen.push(f); });
+    sync();
+  }
+  drop.addEventListener('click', function () { files.click(); });
+  drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); files.click(); } });
+  files.addEventListener('change', function () { var l = Array.prototype.slice.call(files.files); chosen = []; add(l); });
+  ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function (e) { add(e.dataTransfer.files); });
+
+  form.addEventListener('submit', function (e) {
+    if (!chosen.length) { e.preventDefault(); $('err').textContent = 'Please add at least one photo.'; return; }
+    try { localStorage.setItem('rm_api_key', $('api_key').value); localStorage.setItem('rm_operator', $('operator_label').value); } catch (x) {}
+    $('submit').disabled = true; form.classList.add('loading'); $('btn-label').textContent = 'Analysing photos… (about 5 seconds)';
+  });
+</script>
 {% endblock %}

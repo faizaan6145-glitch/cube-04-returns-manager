@@ -1,77 +1,126 @@
 {% extends "base.html" %}
-{% block title %}{{ record.record_id }}{% endblock %}
+{% block title %}{{ record.outcome.disposition | replace('_', ' ') }} · {{ record.record_id }}{% endblock %}
 {% block content %}
-<h1>{{ record.record_id }}</h1>
-<p><a href="/">&larr; New return</a></p>
+{% set o = record.outcome %}
+{% set key = api_key or '' %}
+<p class="small" style="margin:0 0 .8rem"><a href="/">&larr; New return</a> &middot; <a href="/records?api_key={{ key }}">History</a></p>
 
-<div class="card">
-  <strong>Unit</strong> {{ record.subject.unit_id }} ·
-  <strong>Order</strong> {{ record.subject.order_id }} ·
-  <strong>SKU</strong> {{ record.subject.ordered_sku }} ·
-  <strong>ASIN</strong> {{ record.subject.ordered_asin }}<br>
-  <strong>Org</strong> {{ record.organization_id }} ·
-  <strong>Operator</strong> {{ record.operator_label }} ·
-  <strong>Captured</strong> {{ record.captured_at }}<br>
-  <strong>Status</strong> {{ record.status }}
+<section class="card">
+  <div class="hero">
+    <div>
+      <div class="small" style="text-transform:uppercase;letter-spacing:.06em;font-weight:700">Recommended disposition</div>
+      <div class="dispo {{ o.disposition }}">{{ o.disposition | replace('_', ' ') | capitalize }}</div>
+      <p style="margin:.7rem 0 0;max-width:60ch">{{ o.disposition_reason }}</p>
+    </div>
+    <div style="text-align:right">
+      <span class="pill {{ record.status }}">{{ record.status | replace('_', ' ') | upper }}</span>
+      <div class="small" style="margin-top:.5rem">Condition grade</div>
+      <div style="font-weight:700">{{ (o.condition_grade or 'not graded') | replace('_', ' ') | capitalize }}</div>
+    </div>
+  </div>
+  <div class="meta">
+    <span>Record <b class="mono">{{ record.record_id }}</b></span>
+    <span>Unit <b>{{ record.subject.unit_id }}</b></span>
+    <span>Order <b>{{ record.subject.order_id }}</b></span>
+    <span>SKU <b>{{ record.subject.ordered_sku }}</b></span>
+    <span>Operator <b>{{ record.operator_label }}</b></span>
+    <span>Captured <b>{{ record.captured_at }}</b></span>
+  </div>
+  {% if record.status == 'error' %}
+  <p class="small" style="color:var(--bad);margin-bottom:0">The automated check couldn't run, so this case was kept for manual review instead of being dropped.</p>
+  {% endif %}
+</section>
+
+<div class="grid-2" style="margin-top:1.25rem">
+  <section class="stack">
+    <div class="card">
+      <h2>Checks</h2>
+      <div class="checks">
+        {% for check in record.checks %}
+        <div class="card check" style="box-shadow:none;background:var(--surface-2)">
+          <h3>{{ check.check_key }} <span class="pill {{ check.verdict }}">{{ check.verdict }}</span></h3>
+          <div class="bar" title="Confidence"><i style="width: {{ (check.confidence * 100) | round | int }}%"></i></div>
+          <div class="small">Confidence {{ "%.0f"|format(check.confidence * 100) }}% &middot; {{ check.latency_ms }} ms</div>
+          <p style="margin:.7rem 0 0">{{ check.detail }}</p>
+          <details class="ov"><summary>Disagree? Override this verdict</summary>
+            <form action="/records/{{ record.record_id }}/override" method="post" style="margin-top:.7rem">
+              <input type="hidden" name="check_key" value="{{ check.check_key }}">
+              <input type="hidden" name="api_key" value="{{ key }}">
+              <div class="field"><select name="revised_verdict">
+                {% for v in ['PASS', 'FAIL', 'UNCERTAIN'] if v != check.verdict %}<option value="{{ v }}">{{ v }}</option>{% endfor %}
+              </select></div>
+              <div class="field"><input type="text" name="operator_label" class="op" placeholder="Your name" required></div>
+              <div class="field"><input type="text" name="reason" placeholder="Why do you disagree?" required></div>
+              <button class="btn small" type="submit">Save override</button>
+              <div class="hint">The original verdict is kept; your change is added to the record.</div>
+            </form>
+          </details>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Parts</h2>
+      {% set comp = record.checks | selectattr('check_key', 'equalto', 'completeness') | first %}
+      {% if o.parts_expected %}
+      <div class="chips">
+        {% for p in o.parts_expected %}
+          {% if p in o.parts_missing %}<span class="chip miss">{{ p }} &middot; missing</span>
+          {% elif comp.verdict == 'PASS' %}<span class="chip ok">{{ p }}</span>
+          {% else %}<span class="chip">{{ p }}</span>{% endif %}
+        {% endfor %}
+      </div>
+      {% if comp.verdict == 'FAIL' and not o.parts_missing %}<p class="small" style="margin:.7rem 0 0">Something is missing &mdash; see the Completeness check above for what.</p>
+      {% elif comp.verdict == 'UNCERTAIN' %}<p class="small" style="margin:.7rem 0 0">The photos don't show enough to confirm these parts.</p>{% endif %}
+      {% else %}<span class="small">No catalogue entry was found for this SKU, so expected parts are unknown.</span>{% endif %}
+    </div>
+
+    {% if record.overrides %}
+    <div class="card">
+      <h2>Overrides</h2>
+      {% for ov in record.overrides %}
+      <div style="padding:.5rem 0;border-bottom:1px solid var(--line)">
+        <b style="text-transform:capitalize">{{ ov.check_key }}</b>
+        <span class="pill {{ ov.original_verdict }}">{{ ov.original_verdict }}</span> &rarr; <span class="pill {{ ov.revised_verdict }}">{{ ov.revised_verdict }}</span>
+        <div class="small">{{ ov.operator_label }} &middot; {{ ov.overridden_at }}</div>
+        <div>{{ ov.reason }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  <aside class="stack">
+    <div class="card">
+      <h2>Photos</h2>
+      <div class="gallery">
+        {% for img in record.images %}<img src="{{ img }}?api_key={{ key }}" alt="Return photo {{ loop.index }}" data-zoom>{% else %}<span class="small">No photos.</span>{% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <h2>Evidence record</h2>
+      <div class="small">Schema {{ record.schema_version }} &middot; agent {{ record.agent }}</div>
+      <div class="small mono" style="word-break:break-all;margin-top:.3rem" title="SHA-256 of the record contents">{{ record.content_hash }}</div>
+      <details style="margin-top:.7rem"><summary class="small" style="cursor:pointer;color:var(--accent);font-weight:600">View raw JSON</summary>
+        <pre>{{ record.model_dump_json(indent=2) }}</pre></details>
+    </div>
+  </aside>
 </div>
 
-<div class="card">
-  <strong>Photos</strong><br>
-  {% for img in record.images %}
-    <img class="thumb" src="{{ img }}?api_key={{ api_key }}">
-  {% else %}
-    <em>No photos.</em>
-  {% endfor %}
-</div>
-
-<div class="card">
-  <h3>Checks</h3>
-  {% for check in record.checks %}
-    <p>
-      <strong>{{ check.check_key }}</strong>
-      <span class="verdict {{ check.verdict }}">{{ check.verdict }}</span>
-      (confidence {{ "%.2f"|format(check.confidence) }}, {{ check.latency_ms }}ms, {{ check.model_version }})<br>
-      {{ check.detail }}
-    </p>
-    <form action="/records/{{ record.record_id }}/override" method="post" style="margin:0.3rem 0 1rem;">
-      <input type="hidden" name="check_key" value="{{ check.check_key }}">
-      <input type="hidden" name="api_key" value="{{ api_key }}">
-      <select name="revised_verdict" style="width:auto; display:inline-block;">
-        <option value="PASS">PASS</option>
-        <option value="FAIL">FAIL</option>
-        <option value="UNCERTAIN">UNCERTAIN</option>
-      </select>
-      <input type="text" name="operator_label" placeholder="your name" style="width:140px; display:inline-block;" required>
-      <input type="text" name="reason" placeholder="reason for override" style="width:260px; display:inline-block;" required>
-      <button type="submit" class="secondary" style="margin-top:0.3rem;">Override</button>
-    </form>
-  {% endfor %}
-</div>
-
-<div class="card">
-  <h3>Outcome</h3>
-  Identity match: <strong>{{ record.outcome.identity_match }}</strong><br>
-  Expected parts: {{ record.outcome.parts_expected | join(", ") if record.outcome.parts_expected else "—" }}<br>
-  Missing parts: {{ record.outcome.parts_missing | join(", ") if record.outcome.parts_missing else "none" }}<br>
-  Condition grade: <code>{{ record.outcome.condition_grade or "not graded" }}</code><br>
-  <strong>Disposition: {{ record.outcome.disposition }}</strong><br>
-  <small class="hint">{{ record.outcome.disposition_reason }}</small>
-</div>
-
-{% if record.overrides %}
-<div class="card">
-  <h3>Overrides</h3>
-  {% for o in record.overrides %}
-    <p><strong>{{ o.check_key }}</strong>: {{ o.original_verdict }} &rarr; {{ o.revised_verdict }}
-      by {{ o.operator_label }} at {{ o.overridden_at }}<br>
-      <small class="hint">{{ o.reason }}</small></p>
-  {% endfor %}
-</div>
-{% endif %}
-
-<div class="card">
-  <h3>Raw evidence record</h3>
-  <details><summary>Show JSON</summary><pre style="white-space:pre-wrap;">{{ record.model_dump_json(indent=2) }}</pre></details>
-  <small class="hint">content_hash: {{ record.content_hash }}</small>
-</div>
+<dialog id="zoom"><img id="zoom-img" alt=""></dialog>
+{% endblock %}
+{% block scripts %}
+<script>
+  try {
+    var key = {{ (api_key or "") | tojson }}; if (key) localStorage.setItem('rm_api_key', key);
+    var op = localStorage.getItem('rm_operator');
+    if (op) document.querySelectorAll('input.op').forEach(function (i) { i.value = op; });
+  } catch (e) {}
+  var dlg = document.getElementById('zoom'), big = document.getElementById('zoom-img');
+  document.querySelectorAll('[data-zoom]').forEach(function (img) {
+    img.addEventListener('click', function () { big.src = img.src; dlg.showModal(); });
+  });
+  dlg.addEventListener('click', function () { dlg.close(); });
+</script>
 {% endblock %}

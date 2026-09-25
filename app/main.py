@@ -65,11 +65,40 @@ def health() -> dict:
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
 
 
+def _wants_html(request: Request) -> bool:
+    return "text/html" in (request.headers.get("accept") or "")
+
+
+@app.exception_handler(HTTPException)
+async def friendly_errors(request: Request, exc: HTTPException):
+    """Browsers get a readable error page; API callers still get JSON."""
+    if not _wants_html(request):
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    hints = {401: "Check that you pasted the right API key (the value after the colon in ORG_KEYS).",
+             404: "That record or image doesn't exist for your organisation."}
+    return templates.TemplateResponse(
+        request, "error.html",
+        {"code": exc.status_code, "message": exc.detail, "hint": hints.get(exc.status_code, "")},
+        status_code=exc.status_code,
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    settings = get_settings()
+    items = load_catalog(get_settings().catalog_path).all_items()
+    catalog = [{"sku": i.sku, "asin": i.asin, "title": i.title, "parts": i.expected_parts} for i in items]
+    return templates.TemplateResponse(request, "index.html", {"catalog": catalog})
+
+
+@app.get("/records", response_class=HTMLResponse)
+def history_page(request: Request, api_key: str | None = None):
+    """Recent returns for the caller's organisation. Without a key we just ask for one."""
+    if not api_key:
+        return templates.TemplateResponse(request, "history.html", {"need_key": True, "records": [], "api_key": ""})
+    org_id = resolve_org(api_key)
+    records = get_store().list_records(org_id, limit=100)
     return templates.TemplateResponse(
-        request, "index.html", {"orgs": sorted(set(settings.org_keys.values()))}
+        request, "history.html", {"need_key": False, "records": records, "api_key": api_key, "org_id": org_id}
     )
 
 

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}History · Returns Manager{% endblock %}
+{% block nav_hist %}active{% endblock %}
+{% block content %}
+{% if need_key %}
+<div class="card center-card">
+  <h2>Enter your API key</h2>
+  <p class="sub">Your history is private to your organisation.</p>
+  <form method="get" action="/records">
+    <div class="field"><input id="k" name="api_key" type="password" required placeholder="API key" autofocus></div>
+    <button class="btn block" type="submit">Show history</button>
+  </form>
+</div>
+<script>try { var k = localStorage.getItem('rm_api_key'); if (k) location.replace('/records?api_key=' + encodeURIComponent(k)); } catch (e) {}</script>
+{% else %}
+<div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;margin-bottom:1.2rem">
+  <div><h1>History</h1><p class="sub" style="margin:0">Latest {{ records | length }} return{{ '' if records | length == 1 else 's' }} for <b>{{ org_id }}</b></p></div>
+  <a class="btn" href="/">New return</a>
+</div>
+<div class="card" style="padding:.4rem 0">
+  {% if records %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Captured</th><th>Unit</th><th>Product</th><th>Identity</th><th>Disposition</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for r in records %}
+      <tr>
+        <td class="small">{{ r.captured_at.replace('T', ' ').replace('Z', '') }}</td>
+        <td><b>{{ r.subject.unit_id }}</b><div class="small mono">{{ r.record_id }}</div></td>
+        <td>{{ r.subject.ordered_sku }}</td>
+        <td>{% set idc = r.checks | selectattr('check_key', 'equalto', 'identity') | first %}<span class="pill {{ idc.verdict }}">{{ idc.verdict }}</span></td>
+        <td><span class="pill {{ r.outcome.disposition }}">{{ r.outcome.disposition | replace('_', ' ') }}</span></td>
+        <td><span class="pill {{ r.status }}">{{ r.status | replace('_', ' ') }}</span></td>
+        <td><a href="/records/{{ r.record_id }}?api_key={{ api_key }}">Open &rarr;</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <div class="empty"><p class="big">&#8635;</p><p>No returns yet.</p><a class="btn" href="/">Check your first return</a></div>
+  {% endif %}
+</div>
+<script>try { localStorage.setItem('rm_api_key', {{ api_key | tojson }}); } catch (e) {}</script>
+{% endif %}
+{% endblock %}
