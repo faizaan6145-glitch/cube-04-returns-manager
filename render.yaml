@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: returns-manager
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: GEMINI_TIMEOUT_S
+        value: "60"
+      - key: MIN_CONFIDENCE
+        value: "0.6"
+      - key: DB_PATH
+        value: storage/returns.db
+      - key: IMAGE_DIR
+        value: storage/images
+      # Set these in the Render dashboard, not here -- never commit secrets:
+      #   GEMINI_API_KEY = your key from https://aistudio.google.com/apikey
+      #   ORG_KEYS       = org_demo_alpha:<random>,org_demo_bravo:<random>
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ORG_KEYS
+        sync: false
+    disk:
+      name: returns-manager-storage
+      mountPath: /opt/render/project/src/storage
+      sizeGB: 1

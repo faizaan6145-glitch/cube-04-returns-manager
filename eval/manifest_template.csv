@@ -1,0 +1,2 @@
+unit_id,org_id,order_id,ordered_sku,ordered_asin,image_files
+EVAL-0001,org_demo_alpha,ORD-EVAL-0001,SKU-PUZZLE-500,B0DUMMY729,EVAL-0001_1.jpg;EVAL-0001_2.jpg

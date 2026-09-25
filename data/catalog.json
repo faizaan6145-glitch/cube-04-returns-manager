@@ -1,0 +1,157 @@
+{
+  "_comment": "Built from data/returns_sample.csv ordered_sku/ordered_asin/parts_list columns (dummy data, per data/README.md). Keyed by org_id -> list of SKUs.",
+  "orgs": {
+    "org_demo_alpha": [
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-BOTTLE-750",
+        "asin": "B0DUMMY622",
+        "title": "Bottle 750",
+        "expected_parts": [
+          "bottle",
+          "lid"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-CABLE-USBC",
+        "asin": "B0DUMMY261",
+        "title": "Cable Usbc",
+        "expected_parts": [
+          "cable"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-LAMP-LED",
+        "asin": "B0DUMMY357",
+        "title": "Lamp Led",
+        "expected_parts": [
+          "lamp",
+          "usb cable",
+          "manual"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-LEASH-6FT",
+        "asin": "B0DUMMY205",
+        "title": "Leash 6Ft",
+        "expected_parts": [
+          "leash"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-PROT-1KG",
+        "asin": "B0DUMMY357",
+        "title": "Prot 1Kg",
+        "expected_parts": [
+          "tub",
+          "scoop"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-PUZZLE-500",
+        "asin": "B0DUMMY729",
+        "title": "Puzzle 500",
+        "expected_parts": [
+          "puzzle pieces",
+          "poster"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-SERUM-30",
+        "asin": "B0DUMMY031",
+        "title": "Serum 30",
+        "expected_parts": [
+          "bottle",
+          "dropper",
+          "leaflet"
+        ]
+      },
+      {
+        "org_id": "org_demo_alpha",
+        "sku": "SKU-TOWEL-BLU",
+        "asin": "B0DUMMY600",
+        "title": "Towel Blu",
+        "expected_parts": [
+          "towel"
+        ]
+      }
+    ],
+    "org_demo_bravo": [
+      {
+        "org_id": "org_demo_bravo",
+        "sku": "SKU-BOTTLE-750",
+        "asin": "B0DUMMY622",
+        "title": "Bottle 750",
+        "expected_parts": [
+          "bottle",
+          "lid"
+        ]
+      },
+      {
+        "org_id": "org_demo_bravo",
+        "sku": "SKU-CANDLE-3",
+        "asin": "B0DUMMY964",
+        "title": "Candle 3",
+        "expected_parts": [
+          "candle x3",
+          "gift box"
+        ]
+      },
+      {
+        "org_id": "org_demo_bravo",
+        "sku": "SKU-MUG-11",
+        "asin": "B0DUMMY351",
+        "title": "Mug 11",
+        "expected_parts": [
+          "mug x2"
+        ]
+      },
+      {
+        "org_id": "org_demo_bravo",
+        "sku": "SKU-PROT-1KG",
+        "asin": "B0DUMMY357",
+        "title": "Prot 1Kg",
+        "expected_parts": [
+          "tub",
+          "scoop"
+        ]
+      },
+      {
+        "org_id": "org_demo_bravo",
+        "sku": "SKU-PUZZLE-500",
+        "asin": "B0DUMMY729",
+        "title": "Puzzle 500",
+        "expected_parts": [
+          "puzzle pieces",
+          "poster"
+        ]
+      },
+      {
+        "org_id": "org_demo_bravo",
+        "sku": "SKU-SERUM-30",
+        "asin": "B0DUMMY031",
+        "title": "Serum 30",
+        "expected_parts": [
+          "bottle",
+          "dropper",
+          "leaflet"
+        ]
+      },
+      {
+        "org_id": "org_demo_bravo",
+        "sku": "SKU-TOWEL-BLU",
+        "asin": "B0DUMMY600",
+        "title": "Towel Blu",
+        "expected_parts": [
+          "towel"
+        ]
+      }
+    ]
+  }
+}

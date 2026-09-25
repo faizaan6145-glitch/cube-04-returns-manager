@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ record.record_id }}{% endblock %}
+{% block content %}
+<h1>{{ record.record_id }}</h1>
+<p><a href="/">&larr; New return</a></p>
+
+<div class="card">
+  <strong>Unit</strong> {{ record.subject.unit_id }} ·
+  <strong>Order</strong> {{ record.subject.order_id }} ·
+  <strong>SKU</strong> {{ record.subject.ordered_sku }} ·
+  <strong>ASIN</strong> {{ record.subject.ordered_asin }}<br>
+  <strong>Org</strong> {{ record.organization_id }} ·
+  <strong>Operator</strong> {{ record.operator_label }} ·
+  <strong>Captured</strong> {{ record.captured_at }}<br>
+  <strong>Status</strong> {{ record.status }}
+</div>
+
+<div class="card">
+  <strong>Photos</strong><br>
+  {% for img in record.images %}
+    <img class="thumb" src="{{ img }}?api_key={{ api_key }}">
+  {% else %}
+    <em>No photos.</em>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h3>Checks</h3>
+  {% for check in record.checks %}
+    <p>
+      <strong>{{ check.check_key }}</strong>
+      <span class="verdict {{ check.verdict }}">{{ check.verdict }}</span>
+      (confidence {{ "%.2f"|format(check.confidence) }}, {{ check.latency_ms }}ms, {{ check.model_version }})<br>
+      {{ check.detail }}
+    </p>
+    <form action="/records/{{ record.record_id }}/override" method="post" style="margin:0.3rem 0 1rem;">
+      <input type="hidden" name="check_key" value="{{ check.check_key }}">
+      <input type="hidden" name="api_key" value="{{ api_key }}">
+      <select name="revised_verdict" style="width:auto; display:inline-block;">
+        <option value="PASS">PASS</option>
+        <option value="FAIL">FAIL</option>
+        <option value="UNCERTAIN">UNCERTAIN</option>
+      </select>
+      <input type="text" name="operator_label" placeholder="your name" style="width:140px; display:inline-block;" required>
+      <input type="text" name="reason" placeholder="reason for override" style="width:260px; display:inline-block;" required>
+      <button type="submit" class="secondary" style="margin-top:0.3rem;">Override</button>
+    </form>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h3>Outcome</h3>
+  Identity match: <strong>{{ record.outcome.identity_match }}</strong><br>
+  Expected parts: {{ record.outcome.parts_expected | join(", ") if record.outcome.parts_expected else "—" }}<br>
+  Missing parts: {{ record.outcome.parts_missing | join(", ") if record.outcome.parts_missing else "none" }}<br>
+  Condition grade: <code>{{ record.outcome.condition_grade or "not graded" }}</code><br>
+  <strong>Disposition: {{ record.outcome.disposition }}</strong><br>
+  <small class="hint">{{ record.outcome.disposition_reason }}</small>
+</div>
+
+{% if record.overrides %}
+<div class="card">
+  <h3>Overrides</h3>
+  {% for o in record.overrides %}
+    <p><strong>{{ o.check_key }}</strong>: {{ o.original_verdict }} &rarr; {{ o.revised_verdict }}
+      by {{ o.operator_label }} at {{ o.overridden_at }}<br>
+      <small class="hint">{{ o.reason }}</small></p>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Raw evidence record</h3>
+  <details><summary>Show JSON</summary><pre style="white-space:pre-wrap;">{{ record.model_dump_json(indent=2) }}</pre></details>
+  <small class="hint">content_hash: {{ record.content_hash }}</small>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Returns Manager — Submit a return{% endblock %}
+{% block content %}
+<h1>Returns Manager</h1>
+<p>Submit photos of a returned item. The agent checks identity, completeness and
+condition, then decides a disposition.</p>
+
+<form action="/agent" method="post" enctype="multipart/form-data">
+  <label>Your API key
+    <input type="text" name="api_key" list="org-hint" placeholder="Paste the api_key for your org from .env" required>
+    <datalist id="org-hint">{% for org in orgs %}<option value="{{ org }}">{% endfor %}</datalist>
+    <small class="hint">This is the key from ORG_KEYS in your .env (format org_id:api_key) —
+      known orgs: {{ orgs | join(", ") }}.</small>
+  </label>
+
+  <label>Your name / operator label
+    <input type="text" name="operator_label" placeholder="op_you" required>
+  </label>
+  <label>Unit ID
+    <input type="text" name="unit_id" placeholder="UNIT-0003" required>
+  </label>
+  <label>Order ID
+    <input type="text" name="order_id" placeholder="ORD-DUMMY-50003" required>
+  </label>
+  <label>Ordered SKU
+    <input type="text" name="ordered_sku" placeholder="SKU-PUZZLE-500" required>
+  </label>
+  <label>Ordered ASIN
+    <input type="text" name="ordered_asin" placeholder="B0DUMMY729" required>
+  </label>
+  <label>Photos (2-3 recommended)
+    <input type="file" name="images" accept="image/*" multiple required>
+  </label>
+  <button type="submit">Run Returns Manager</button>
+</form>
+{% endblock %}

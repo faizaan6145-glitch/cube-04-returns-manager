@@ -1,326 +1,131 @@
-# Cube Buildathon · 04 · Returns Manager
+# Returns Manager
 
-**Round 2 · Individual Build**
+**Cube Buildathon · 04 · Returns Manager · Round 2 (individual build)**
 
-> Five agents, one unit, one record that follows it.
-> A physical product arrives, gets prepped, gets shipped, comes back. At every step a fast operational judgment has to be made and recorded.
+An agent that looks at photos of a customer-returned item and decides:
 
-**New here? Read these first:**
+1. **Identity** — is this the SKU/ASIN that was actually ordered?
+2. **Completeness** — are all the expected parts there?
+3. **Condition** — graded on Amazon's own published condition scale.
+4. **Disposition** — `restock`, `refurbish`, `liquidate`, `dispose`, or
+   `pending_review`.
 
-1. [`GITHUB-GUIDE.md`](GITHUB-GUIDE.md) explains how to fork the repository, set it up, build and push your work.
-2. [`RULES.md`](RULES.md) covers the repository and engineering rules.
+It returns a structured, traceable evidence record for each return so the
+next stage in the chain (Recovery Manager) can consume it. See
+[`ARCHITECTURE.md`](ARCHITECTURE.md) for how it's built, [`EVAL_REPORT.md`](EVAL_REPORT.md)
+for measured results, and [`FINDINGS.md`](FINDINGS.md) for contradictions
+found in the brief and sample data along the way. The original problem
+statement/rules from the organisers are still in [`RULES.md`](RULES.md) and
+[`GITHUB-GUIDE.md`](GITHUB-GUIDE.md).
 
----
+## How it works, in one paragraph
 
-## Your problem statement: Returns Manager
+Upload 2-3 photos plus the order's SKU/ASIN. One batched call to Gemini
+(vision + reasoning) checks identity, completeness and condition together and
+returns strict JSON with a verdict, confidence and explanation for each.
+Disposition is then decided by fixed Python rules from those three verdicts —
+not by the model — so every decision can be explained in one sentence. If the
+model call fails or times out, the case is still saved with status
+`pending_review` instead of being dropped ("fail open"). Every check that's
+too ambiguous to call reliably comes back `UNCERTAIN`, which is treated as a
+first-class outcome, not a forced guess.
 
-|                              |                                       |
-| ---------------------------- | ------------------------------------- |
-| **Position in the chain**    | Step 4 of 5 · Customer return         |
-| **Customer**                 | Seller, or prep center acting for one |
-| **What gets recorded**       | Condition and disposition             |
-| **Who consumes your output** | Recovery Manager                      |
+## Setup
 
-Someone opens a returned parcel. In a few seconds they need to decide:
+Requires Python 3.11+.
 
-* Is this the item we sold?
-* Is it complete?
-* What condition is it in?
-* What should happen to it next?
+```sh
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
 
-Your agent should make that process structured, consistent and evidence-backed.
-
-### What the agent returns
-
-From appropriate visual/input evidence, the Returns Manager should determine:
-
-* **Identity** against the seller's own catalogue. Is this the ASIN/SKU that was ordered?
-* **Completeness** against the expected parts list: accessories, manuals, cables and other required components.
-* **Condition** using the published condition scale. Do not invent your own condition scale.
-* **Disposition**, such as `restock`, `refurbish`, `liquidate`, `dispose` or `pending_review`.
-
-> Moving even a few percent of returns from liquidation to restock is direct margin. That is the commercial case in one sentence.
-
----
-
-## The chain you are part of
-
-```text
- Supplier delivery      Inbound to Amazon     Outbound to buyer     Customer return        Money back
- ┌──────────────┐      ┌──────────────┐      ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
- │ 01 Receiving │ ───▶ │ 02 Prep      │ ───▶ │ 03 Pack      │ ───▶ │ 04 Returns   │ ───▶ │ 05 Recovery  │
- │ condition on │      │ compliance   │      │ contents at  │      │ condition &  │      │ reads all    │
- │ arrival      │      │ proof        │      │ seal         │      │ disposition  │      │ four → claim │
- └──────────────┘      └──────────────┘      └──────────────┘      └──────────────┘      └──────────────┘
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-The first four Managers generate operational evidence. Recovery Manager consumes those records downstream.
+Edit `.env`:
 
-Your output should therefore be structured, traceable and usable by the next stage.
+* `GEMINI_API_KEY` — get a free key at <https://aistudio.google.com/apikey>.
+* `ORG_KEYS` — pick your own long random values for the two demo orgs, e.g.
+  `org_demo_alpha:some-long-random-string,org_demo_bravo:another-long-string`.
 
----
+## Run it
 
-## Reference data
-
-`data/` contains **synthetic** reference data for development and testing. See [`data/README.md`](data/README.md) for the field definitions.
-
-The SKUs, ASINs, FNSKUs, orders, suppliers, operators and amounts are invented. Requirement flags and fee amounts are **not** authoritative Amazon rules or fees.
-
-The `photo_refs` values are placeholders, and images are not included with this repository. Create or use appropriate fixtures for development and evaluation.
-
-All five Buildathon repositories share the same conceptual `unit_id` values, allowing a unit to be followed through the operational chain.
-
----
-
-## How to build
-
-This is an **individual Round 2 build**.
-
-### Your workflow
-
-```text
-Fork
-  ↓
-Clone
-  ↓
-Understand the problem
-  ↓
-Build
-  ↓
-Test
-  ↓
-Evaluate
-  ↓
-Document
-  ↓
-Deploy / Demo
-  ↓
-Submit
+```sh
+uvicorn app.main:app --reload
 ```
 
-Build your solution in **your own fork** of this repository.
+Open <http://localhost:8000>, paste in one org's API key from `.env`, fill in
+a unit/order/SKU/ASIN (see `data/returns_sample.csv` for examples) and upload
+2-3 photos. You'll land on the evidence record page.
 
-You do not need to create a participant folder in the organiser repository or open a pull request into the organiser repository.
+The API can also be called directly:
 
----
-
-## What you should focus on
-
-Your Returns Manager should be able to:
-
-```text
-Input / Return Evidence
-        ↓
-     Identity
-        ↓
-   Completeness
-        ↓
-     Condition
-        ↓
-    Disposition
-        ↓
-Structured Evidence Record
+```sh
+curl -X POST http://localhost:8000/agent \
+  -H "X-API-Key: <key from ORG_KEYS>" \
+  -F operator_label=op_you -F unit_id=UNIT-0001 -F order_id=ORD-0001 \
+  -F ordered_sku=SKU-PUZZLE-500 -F ordered_asin=B0DUMMY729 \
+  -F images=@photo1.jpg -F images=@photo2.jpg
 ```
 
-The exact internal architecture is up to you.
+`GET /health` for a liveness check.
 
-Focus on making the core workflow work reliably before adding unnecessary features.
+## Test
 
-A worked Returns example may be available in the repository resources. **Read it to understand the expected standard. Do not simply copy it.**
-
----
-
-## Evidence & Decision Traceability
-
-Your agent should produce structured evidence for its decisions.
-
-The official evidence contract includes concepts such as:
-
-* `record_id`
-* `schema_version`
-* `organization_id`
-* `client_id`
-* `agent`
-* `subject`
-* `captured_at`
-* `operator_label`
-* `images`
-* `checks`
-* `outcome`
-* `overrides`
-* `status`
-
-Each check should make the result understandable through its verdict, confidence and supporting detail where applicable.
-
-Use:
-
-* **PASS** when the evidence supports the condition.
-* **FAIL** when the evidence supports that the condition is not met.
-* **UNCERTAIN** when the evidence is insufficient for a reliable judgment.
-
-`UNCERTAIN` is a valid outcome. Do not force ambiguous cases into PASS or FAIL.
-
----
-
-## Cross-Manager Compatibility
-
-Round 2 is individual, but your output will eventually be consumed by Recovery Manager.
-
-Use the **official evidence contract provided by the organisers** as the baseline for interoperability.
-
-Do not create a separate negotiated cross-pod contract for Round 2.
-
-Your decision should allow another system to understand:
-
-```text
-What was returned?
-      ↓
-What was checked?
-      ↓
-What did the agent decide?
-      ↓
-Why?
-      ↓
-What evidence supports it?
+```sh
+pytest
 ```
 
----
+Covers: tenant isolation (`tests/test_isolation.py` — org B can't read org A's
+records or images, even by guessing an id), fail-open behaviour
+(`tests/test_fail_open.py` — a model timeout/error still saves the case),
+disposition rules (`tests/test_disposition.py`), the evidence schema
+(`tests/test_schema.py`), and the evaluation metrics themselves
+(`tests/test_eval_metrics.py`).
 
-## Engineering expectations
+## Evaluate
 
-Keep the system practical and reliable.
-
-### Tenancy isolation
-
-If you store persistent data, organisation/client data should remain properly isolated.
-
-### Efficient model usage
-
-Avoid unnecessary repeated model calls. Batch related reasoning where appropriate.
-
-### Fail open
-
-If a model or dependency fails, do not silently discard the input. Preserve the available information and move the case into an appropriate pending/review state.
-
-### Authoritative rules
-
-Where an external rule or requirement is needed, use the authoritative source rather than relying on model memory or synthetic sample values.
-
----
-
-## Evaluation
-
-Evaluation is part of your Round 2 score.
-
-For the visual checks, build an appropriate unseen/held-out evaluation set. Where applicable, use at least **50 unseen units** and have two humans independently label the cases before comparing agent performance.
-
-Report:
-
-* results per important check,
-* false positives,
-* false negatives,
-* `UNCERTAIN` / review rate,
-* important failure modes,
-* latency/cost where relevant.
-
-Do not evaluate only on examples that make the system look successful.
-
-For condition and other visual checks, use genuinely varied cases, including difficult or ambiguous examples.
-
----
-
-## Round 2 evaluation — 100 points
-
-| Criterion                                    |  Points |
-| -------------------------------------------- | ------: |
-| Problem Understanding & Solution Relevance   |  **15** |
-| Agent Functionality & Decision Quality       |  **25** |
-| Evaluation, Accuracy & Uncertainty Handling  |  **25** |
-| Evidence, Traceability & Engineering Quality |  **20** |
-| UX, Demo & Documentation                     |  **15** |
-| **TOTAL**                                    | **100** |
-
-Your Round 2 score is important because participants selected for Round 3 will carry their Round 2 score into the final combined result.
-
----
-
-## Submission
-
-### Submissions open
-
-**27 September 2026**
-
-### Final deadline
-
-**1 October 2026 · 6:00 PM IST**
-
-The submission form closes permanently at the deadline.
-
-**There is no reopening and no resubmission.**
-
-Your final submission should include:
-
-* your GitHub fork,
-* working implementation,
-* `README.md`,
-* `ARCHITECTURE.md`,
-* evaluation results,
-* demo video,
-* deployment URL where applicable,
-* required submission links.
-
-### LinkedIn — Mandatory
-
-You must publish a LinkedIn post about your Round 2 build.
-
-The post must:
-
-* mention your Returns Manager build,
-* explain what you built,
-* tag **CodeQuesters**,
-* tag **Sydon.AI**.
-
-Include the LinkedIn post URL in the submission form.
-
-The organisers will share the official LinkedIn post template separately.
-
----
-
-## Commit rule
-
-All code commits forming your Round 2 submission must be made during the authorised build phase.
-
-Once the build phase ends, do not continue making Round 2 code changes.
-
----
-
-## Final checklist
-
-```text
-[ ] Returns Manager implementation works
-[ ] Working in my own fork
-[ ] README.md complete
-[ ] ARCHITECTURE.md complete
-[ ] Identity tested
-[ ] Completeness tested
-[ ] Condition tested
-[ ] Disposition tested
-[ ] UNCERTAIN / review handling tested
-[ ] Evidence trace implemented
-[ ] Evaluation completed
-[ ] Failure modes documented
-[ ] Demo ready
-[ ] LinkedIn post published
-[ ] CodeQuesters tagged
-[ ] Sydon.AI tagged
-[ ] Submission links verified
-[ ] Final submission ready before 1 October · 6:00 PM IST
+```sh
+python eval/run_eval.py
 ```
 
-> **Build → Test → Measure → Document → Publish → Submit**
+Runs the real pipeline over an unseen, two-human-labelled set and reports
+per-check accuracy, false positives/negatives, `UNCERTAIN` rate, human
+agreement (Cohen's kappa) and latency. See [`eval/README.md`](eval/README.md)
+for how to build the evaluation set, and [`EVAL_REPORT.md`](EVAL_REPORT.md)
+for the results.
 
----
+## Project layout
 
-**Cube Buildathon · 04 · Returns Manager**
+```
+app/
+  main.py            FastAPI routes: /, /agent, /health, /records/{id}, /images/{id}
+  pipeline.py         identity -> completeness -> condition -> disposition
+  gemini_client.py    one batched Gemini call, JSON schema, timeout, fail-open
+  disposition.py      deterministic disposition rules
+  condition_scale.py  Amazon's published condition grades + source
+  catalog.py          per-org SKU/ASIN/parts lookup
+  store.py            SQLite, every query scoped by organization_id
+  schemas.py          the evidence record contract (Pydantic)
+  templates/          upload form + evidence record page
+data/
+  returns_sample.csv  organiser-provided sample data (dummy)
+  catalog.json         built from returns_sample.csv (scripts/build_catalog.py)
+eval/                 evaluation set tooling (see eval/README.md)
+tests/                pytest suite
+```
 
-**Round 2 · Individual Build**
+## Deploy
+
+A `render.yaml` is included for [Render](https://render.com)'s free tier:
+push to your fork, connect the repo on Render, set `GEMINI_API_KEY` and
+`ORG_KEYS` as environment variables in the Render dashboard (don't commit
+them), and deploy.
+
+## Status
+
+See the buildathon checklist and dates in [`RULES.md`](RULES.md). This is an
+individual Round 2 submission for the **04 · Returns Manager** track.
