@@ -3,7 +3,8 @@
 {% block content %}
 {% set o = record.outcome %}
 {% set key = api_key or '' %}
-<p class="small" style="margin:0 0 .8rem"><a href="/">&larr; New return</a> &middot; <a href="/records?api_key={{ key }}">History</a></p>
+{% set q = ('?api_key=' ~ key) if key else '' %}
+<p class="small" style="margin:0 0 .8rem"><a href="/">&larr; New return</a> &middot; <a href="/records{{ q }}">History</a></p>
 
 <section class="card">
   <div class="hero">
@@ -95,7 +96,7 @@
     <div class="card">
       <h2>Photos</h2>
       <div class="gallery">
-        {% for img in record.images %}<img src="{{ img }}?api_key={{ key }}" alt="Return photo {{ loop.index }}" data-zoom>{% else %}<span class="small">No photos.</span>{% endfor %}
+        {% for img in record.images %}<img src="{{ img }}{{ q }}" alt="Return photo {{ loop.index }}" data-zoom>{% else %}<span class="small">No photos.</span>{% endfor %}
       </div>
     </div>
     <div class="card">

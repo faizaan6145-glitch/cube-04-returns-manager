@@ -115,7 +115,7 @@
     try {
       var k = localStorage.getItem('rm_api_key');
       var link = document.getElementById('nav-history');
-      if (k && link) link.href = '/records?api_key=' + encodeURIComponent(k);
+      if (k && link && !{{ 'true' if ui_mode() else 'false' }}) link.href = '/records?api_key=' + encodeURIComponent(k);
     } catch (e) {}
   })();
 </script>

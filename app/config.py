@@ -19,6 +19,7 @@ class Settings:
     db_path: Path
     image_dir: Path
     catalog_path: Path
+    ui_org_id: str | None = None  # org the keyless web UI acts as (see UI_ORG_ID in .env.example)
 
 
 def parse_org_keys(raw: str) -> dict[str, str]:
@@ -41,8 +42,13 @@ def load_settings() -> Settings:
     raw_keys = os.getenv("ORG_KEYS", "")
     if not raw_keys:
         raise RuntimeError("ORG_KEYS is not set. Copy .env.example to .env and fill it in.")
+    org_keys = parse_org_keys(raw_keys)
+    ui_org_id = os.getenv("UI_ORG_ID") or None
+    if ui_org_id and ui_org_id not in org_keys.values():
+        raise RuntimeError(f"UI_ORG_ID={ui_org_id!r} is not one of the orgs in ORG_KEYS.")
     return Settings(
-        org_keys=parse_org_keys(raw_keys),
+        org_keys=org_keys,
+        ui_org_id=ui_org_id,
         gemini_api_key=os.getenv("GEMINI_API_KEY") or None,
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
         gemini_timeout_s=float(os.getenv("GEMINI_TIMEOUT_S", "60")),

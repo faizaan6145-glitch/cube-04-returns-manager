@@ -65,6 +65,15 @@ Images are saved per-org (`storage/images/<org_id>/`) and served only through
 proves org B gets a 404 (not a 403 — nothing suggests the row exists) for org
 A's records and images, even when guessing a valid id.
 
+**Keyless web UI (optional).** Customers shouldn't have to handle an API key, so if `UI_ORG_ID` is set the
+*website* (upload, result, history, images, overrides) acts as that one organisation when no key is sent
+(`app.main.resolve_ui_org`). An explicit key always wins, so another org's key still gets 404 on this org's
+records. The JSON API (`/api/...`) and scripted `/agent` calls never use the fallback and still need a key
+(`tests/test_ui_mode.py`). **Trade-off, stated plainly:** in this mode anyone who can reach the site can see
+that org's data -- there is no per-user login. That is acceptable for a local demo; a real deployment needs a
+proper login (sessions/SSO) mapping each user to their org. If `UI_ORG_ID` is unset, the site asks for an
+access key exactly as before.
+
 **Overrides are additive.** `POST /records/{id}/override` appends an
 `Override` (original verdict, revised verdict, reason, who, when) to the
 record's `overrides` list. The original `checks` entry is never modified.

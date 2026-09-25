@@ -57,9 +57,12 @@ Edit `.env`:
 uvicorn app.main:app --reload
 ```
 
-Open <http://localhost:8000>, paste in one org's API key from `.env`, fill in
-a unit/order/SKU/ASIN (see `data/returns_sample.csv` for examples) and upload
-2-3 photos. You'll land on the evidence record page.
+Open <http://localhost:8000>, pick the ordered product, add photos and click Run. You land on the
+evidence record page; **History** lists past returns.
+
+Set `UI_ORG_ID=org_demo_alpha` in `.env` to use the website without an access key (it then acts as that
+org -- fine for a local demo, see the trade-off in `ARCHITECTURE.md`). Without it, the site asks for the
+org's key from `ORG_KEYS`.
 
 The API can also be called directly:
 

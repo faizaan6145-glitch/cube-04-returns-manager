@@ -8,13 +8,18 @@
 <div class="grid-2">
   <form id="form" class="card" action="/agent" method="post" enctype="multipart/form-data" autocomplete="off">
     <h2>1 &middot; Order details</h2>
+    {% if ui_mode() %}
+    <div class="field"><label class="f" for="operator_label">Your name</label>
+      <input id="operator_label" name="operator_label" type="text" required placeholder="e.g. faizaan"></div>
+    {% else %}
     <div class="row">
-      <div class="field"><label class="f" for="api_key">API key</label>
+      <div class="field"><label class="f" for="api_key">Access key</label>
         <input id="api_key" name="api_key" type="password" required placeholder="Your organisation's key">
-        <div class="hint">From <code>ORG_KEYS</code> in your <code>.env</code>. Remembered in this browser.</div></div>
+        <div class="hint">Remembered in this browser.</div></div>
       <div class="field"><label class="f" for="operator_label">Your name</label>
         <input id="operator_label" name="operator_label" type="text" required placeholder="e.g. faizaan"></div>
     </div>
+    {% endif %}
     <div class="field"><label class="f" for="sku">Ordered product</label>
       <select id="sku" name="ordered_sku" required>
         <option value="" disabled selected>Choose the product that was ordered&hellip;</option>
@@ -62,7 +67,7 @@
 
   // remembered key / operator, generated IDs
   try {
-    $('api_key').value = localStorage.getItem('rm_api_key') || '';
+    if ($('api_key')) $('api_key').value = localStorage.getItem('rm_api_key') || '';
     $('operator_label').value = localStorage.getItem('rm_operator') || '';
   } catch (e) {}
   var stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(2, 12);
@@ -101,7 +106,7 @@
 
   form.addEventListener('submit', function (e) {
     if (!chosen.length) { e.preventDefault(); $('err').textContent = 'Please add at least one photo.'; return; }
-    try { localStorage.setItem('rm_api_key', $('api_key').value); localStorage.setItem('rm_operator', $('operator_label').value); } catch (x) {}
+    try { if ($('api_key')) localStorage.setItem('rm_api_key', $('api_key').value); localStorage.setItem('rm_operator', $('operator_label').value); } catch (x) {}
     $('submit').disabled = true; form.classList.add('loading'); $('btn-label').textContent = 'Analysing photos… (about 5 seconds)';
   });
 </script>

@@ -60,6 +60,27 @@ def resolve_org(api_key: str | None) -> str:
     return settings.org_keys[api_key]
 
 
+def resolve_ui_org(request: Request, api_key: str | None = None) -> str:
+    """Org for the browser UI routes (pages, images, overrides). An explicit key always wins
+    (so isolation is unchanged for anyone who sends one). With no key, the UI acts as the
+    org configured in UI_ORG_ID; if that isn't set, a key is required as before.
+    The JSON API (/api/...) never uses this fallback -- it always needs a key."""
+    key = api_key or request.headers.get("X-API-Key")
+    if key:
+        return resolve_org(key)
+    ui_org = get_settings().ui_org_id
+    if ui_org:
+        return ui_org
+    raise HTTPException(status_code=401, detail="Missing or invalid API key.")
+
+
+def _qs(api_key: str | None) -> str:
+    return f"?api_key={api_key}" if api_key else ""
+
+
+templates.env.globals["ui_mode"] = lambda: bool(get_settings().ui_org_id)
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat()}
@@ -92,10 +113,10 @@ def index(request: Request):
 
 @app.get("/records", response_class=HTMLResponse)
 def history_page(request: Request, api_key: str | None = None):
-    """Recent returns for the caller's organisation. Without a key we just ask for one."""
-    if not api_key:
+    """Recent returns for the caller's organisation. With no key (and no UI_ORG_ID) we ask for one."""
+    if not api_key and not get_settings().ui_org_id and not request.headers.get("X-API-Key"):
         return templates.TemplateResponse(request, "history.html", {"need_key": True, "records": [], "api_key": ""})
-    org_id = resolve_org(api_key)
+    org_id = resolve_ui_org(request, api_key)
     records = get_store().list_records(org_id, limit=100)
     return templates.TemplateResponse(
         request, "history.html", {"need_key": False, "records": records, "api_key": api_key, "org_id": org_id}
@@ -118,7 +139,10 @@ async def agent(
     """Main Returns Manager operation. Accepts multipart/form-data (used by the
     browser upload form and by curl/API callers). Auth is by API key, sent as
     either the X-API-Key header or an api_key form field."""
-    org_id = resolve_org(x_api_key or api_key)
+    if x_api_key or api_key or not _wants_html(request):
+        org_id = resolve_org(x_api_key or api_key)  # scripts/API callers always need a key
+    else:
+        org_id = resolve_ui_org(request)  # the browser form may rely on UI_ORG_ID
     settings = get_settings()
     catalog = load_catalog(settings.catalog_path)
     store = get_store()
@@ -158,17 +182,16 @@ async def agent(
         store.register_image(iid, org_id, record.record_id, str(org_image_dir / f"{iid}.jpg"))
 
     if "text/html" in (request.headers.get("accept") or ""):
-        used_key = x_api_key or api_key
         return HTMLResponse(
             status_code=303,
-            headers={"Location": f"/records/{record.record_id}?api_key={used_key}"},
+            headers={"Location": f"/records/{record.record_id}{_qs(x_api_key or api_key)}"},
         )
     return JSONResponse(record.model_dump())
 
 
 @app.get("/records/{record_id}", response_class=HTMLResponse)
 def get_record_page(request: Request, record_id: str, api_key: str | None = None):
-    org_id = resolve_org(api_key or request.headers.get("X-API-Key"))
+    org_id = resolve_ui_org(request, api_key)
     record = get_store().get_record(record_id, org_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Record not found.")
@@ -188,6 +211,7 @@ def get_record_json(record_id: str, x_api_key: str | None = Header(default=None,
 
 @app.post("/records/{record_id}/override")
 def override_check(
+    request: Request,
     record_id: str,
     check_key: str = Form(...),
     revised_verdict: str = Form(...),
@@ -197,7 +221,7 @@ def override_check(
 ):
     """Overrides never replace the original check -- they are appended
     (RULES.md, Evidence Rule 3: 'Overrides Are Data')."""
-    org_id = resolve_org(api_key)
+    org_id = resolve_ui_org(request, api_key)
     store = get_store()
     record = store.get_record(record_id, org_id)
     if record is None:
@@ -217,12 +241,12 @@ def override_check(
     )
     updated = record.model_copy(update={"overrides": [*record.overrides, override]})
     store.save_record(updated)
-    return HTMLResponse(status_code=303, headers={"Location": f"/records/{record_id}?api_key={api_key}"})
+    return HTMLResponse(status_code=303, headers={"Location": f"/records/{record_id}{_qs(api_key)}"})
 
 
 @app.get("/images/{image_id}")
-def get_image(image_id: str, api_key: str | None = None, x_api_key: str | None = Header(default=None, alias="X-API-Key")):
-    org_id = resolve_org(x_api_key or api_key)
+def get_image(request: Request, image_id: str, api_key: str | None = None):
+    org_id = resolve_ui_org(request, api_key)
     path = get_store().get_image_path(image_id, org_id)
     if path is None or not Path(path).exists():
         raise HTTPException(status_code=404, detail="Image not found.")
